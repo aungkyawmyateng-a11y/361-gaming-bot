@@ -4,29 +4,36 @@ import time
 import html
 from datetime import datetime, timedelta
 from threading import Thread
-from flask import Flask
 import telebot
 from telebot import types
 
-API_TOKEN = os.environ.get('BOT_TOKEN')
-ADMIN_ID = int(os.environ.get('ADMIN_ID', 5023802528))
+try:
+    from flask import Flask
+except ImportError:
+    Flask = None
 
+
+
+API_TOKEN = os.environ.get('BOT_TOKEN')
+ADMIN_ID = int(os.environ.get('ADMIN_ID', 2109228286))
 
 KPAY_NAME = os.environ.get('KPAY_NAME', "U Wunna Phone Khaing")
 KPAY_PHONE = os.environ.get('KPAY_PHONE', "09778867878")
 KBZPAY_QR_URL = os.environ.get('KBZPAY_QR_URL', "https://i.ibb.co/mVv8xQYd/qr.jpg")
 
-
-PRICING = {
+DEFAULT_PRICING = {
     "PS4 Slim": 7000,
     "Xbox": 7000,
     "PS5 Slim": 12000,
     "VIP - PS5 Pro": 20000
 }
 
+PRICING = DEFAULT_PRICING.copy()
+
 bot = telebot.TeleBot(API_TOKEN)
 
 STATUS_FILE = "seats_status.json"
+CONTENT_FILE = "custom_content.json"
 
 DEFAULT_SEATS = {
     "Station (1) [PS4 Slim]": {"available": True, "custom_info": None},
@@ -59,8 +66,8 @@ def save_seats():
 
 seats_status = load_seats()
 
-user_sessions = {}      
-pending_bookings = {}   
+user_sessions = {}
+pending_bookings = {}
 user_languages = {}
 
 def get_lang(user_id):
@@ -70,12 +77,11 @@ def is_session_valid(user_id):
     if user_id not in user_sessions:
         return False
     if "timestamp" in user_sessions[user_id]:
-        if time.time() - user_sessions[user_id]["timestamp"] > 600: 
+        if time.time() - user_sessions[user_id]["timestamp"] > 600:
             del user_sessions[user_id]
             return False
     user_sessions[user_id]["timestamp"] = time.time()
     return True
-
 
 def calculate_time_range(arrival_str, hours_str):
     if "Now" in arrival_str or "အခု" in arrival_str:
@@ -109,6 +115,7 @@ def get_main_keyboard(user_id, lang_code):
     if user_id == ADMIN_ID:
         markup.add(types.KeyboardButton("⚙️ Admin Panel"))
     return markup
+
 
 
 LANGUAGES = {
@@ -314,24 +321,16 @@ LANGUAGES = {
             "🍃 <b>凉拌茶叶</b>\n"
             "• 原味炸豆凉拌茶叶 - 5,000 缅币\n• 番茄甘蓝凉拌茶叶 - 6,000 缅币\n\n"
             "🥤 <b>饮品类</b>\n"
-            "• Monster 能量饮料 (Ultra White) - 13,000 缅币\n• Monster 能量饮料 (Original Black) - 13,000 缅币\n"
-            "• Monster 能量饮料 (Pink) - 13,000 缅币\n• 蓝罐红牛 (Red Bull Blue) - 12,000 缅币\n• 可口可乐 (Coca-Cola) - 3,000 缅币\n"
-            "• Sponsor 运动饮料 - 3,000 缅币\n• 黄罐红牛 (Red Bull Yellow) - 3,000 缅币\n• 冰红茶 (Lemon Tea) - 3,000 缅币\n• 矿泉水 - 1,000 缅币"
+            "• Monster 能量饮料 (Ultra White) - 13,000 缅币\n• Monster 能量饮料 (Original Black) - 13,000 缅币\n• Monster 能量饮料 (Pink) - 13,000 缅币\n• 蓝罐红牛 (Red Bull Blue) - 12,000 缅币\n• 可口可乐 (Coca-Cola) - 3,000 缅币\n• Sponsor 运动饮料 - 3,000 缅币\n• 黄罐红牛 (Red Bull Yellow) - 3,000 缅币\n• 冰红茶 (Lemon Tea) - 3,000 缅币\n• 矿泉水 - 1,000 缅币"
         ),
         "msg_games": (
             "<b>🎮 361° 现有游戏列表</b>\n\n"
             "⚽ <b>体育与格斗类:</b>\n"
             "• EA Sports FC 26\n• NBA 2K26\n• WWE 2K26\n• UFC 6\n• 铁拳 8 (Tekken 8)\n• 师父 (Sifu)\n\n"
             "🔫 <b>动作、冒险与角色扮演类:</b>\n"
-            "• 侠盗猎车手 V (GTA V)\n• 荒野大镖客：救赎 2 (Red Dead Redemption II)\n• 战神：诸神黄昏 (God of War Ragnarök)\n"
-            "• 黑神话：悟空 (Black Myth: Wukong)\n• 蜘蛛侠 2 (Marvel's Spider-Man 2)\n• 羊蹄山之魂 (Ghost of Yōtei)\n"
-            "• 对马岛之魂 (Ghost of Tsushima)\n• 艾尔登法环 (Elden Ring)\n• 霍格沃茨之遗 (Hogwarts Legacy)\n"
-            "• 赛博朋克 2077 (Cyberpunk 2077)\n• 最后生还者 第二部 复刻版 (TLOU Part II)\n• 生化危机 4 (Resident Evil 4)\n"
-            "• 生化危机 9 (Resident Evil 9)\n• 寂静岭 f (Silent Hill f)\n• 剑星 (Stellar Blade)\n• 控制 (Control)\n"
-            "• 使命召唤：现代战争 II\n• 红色沙漠 (Crimson Desert)\n• 007 初露锋芒 (007 First Light)\n• 四海兄弟：故乡 (Mafia: The Old Country)\n\n"
+            "• 侠盗猎车手 V (GTA V)\n• 荒野大镖客：救赎 2 (Red Dead Redemption II)\n• 战神：诸神黄昏 (God of War Ragnarök)\n• 黑神话：悟空 (Black Myth: Wukong)\n• 蜘蛛侠 2 (Marvel's Spider-Man 2)\n• 羊蹄山之魂 (Ghost of Yōtei)\n• 对马岛之魂 (Ghost of Tsushima)\n• 艾尔登法环 (Elden Ring)\n• 霍格沃茨之遗 (Hogwarts Legacy)\n• 赛博朋克 2077 (Cyberpunk 2077)\n• 最后生还者 第二部 复刻版 (TLOU Part II)\n• 生化危机 4 (Resident Evil 4)\n• 生化危机 9 (Resident Evil 9)\n• 寂静岭 f (Silent Hill f)\n• 剑星 (Stellar Blade)\n• 控制 (Control)\n• 使命召唤：现代战争 II\n• 红色沙漠 (Crimson Desert)\n• 007 初露锋芒 (007 First Light)\n• 四海兄弟：故乡 (Mafia: The Old Country)\n\n"
             "👥 <b>双人合作与休闲游戏:</b>\n"
-            "• 双人成行 (It Takes Two)\n• 逃出生天 (A Way Out)\n• 拆弹专家 (Split Fiction)\n• 宇宙机器人 (Astro Bot)\n"
-            "• 流浪 (Stray)\n• 兽性大发 (Reanimal)\n• 乐高蝙蝠侠"
+            "• 双人成行 (It Takes Two)\n• 逃出生天 (A Way Out)\n• 拆弹专家 (Split Fiction)\n• 宇宙机器人 (Astro Bot)\n• 流浪 (Stray)\n• 兽性大发 (Reanimal)\n• 乐高蝙蝠侠"
         ),
         "msg_location": (
             "<b>📍 361° Gaming Lounge 店铺地址</b>\n\n"
@@ -355,6 +354,54 @@ LANGUAGES = {
         "msg_contact": f"<b>📱 联系老板</b>\n\n👤 姓名: <b>{KPAY_NAME}</b>\n📞 电话: <b>{KPAY_PHONE}</b>"
     }
 }
+
+
+EDITABLE_FIELDS = ["msg_menu", "msg_games", "msg_promo_event", "msg_rules", "msg_location", "msg_contact"]
+
+FIELD_LABELS = {
+    "msg_menu": "🍔 Snacks & Drinks Menu",
+    "msg_games": "🎮 Game စာရင်း",
+    "msg_promo_event": "🎉 Promotions & Events",
+    "msg_rules": "🔥 ဆိုင်စည်းကမ်းများ",
+    "msg_location": "📍 ဆိုင်တည်နေရာ",
+    "msg_contact": "📱 ဆိုင်ရှင်ဆက်သွယ်ရန်"
+}
+
+DEFAULT_CONTENT = {
+    lang: {field: LANGUAGES[lang][field] for field in EDITABLE_FIELDS}
+    for lang in ["mm", "en", "zh"]
+}
+
+def load_custom_content():
+    if os.path.exists(CONTENT_FILE):
+        try:
+            with open(CONTENT_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for lang in ["mm", "en", "zh"]:
+                    if lang in data:
+                        for field in EDITABLE_FIELDS:
+                            if field in data[lang]:
+                                LANGUAGES[lang][field] = data[lang][field]
+                if "pricing" in data:
+                    for k, v in data["pricing"].items():
+                        if k in PRICING:
+                            PRICING[k] = int(v)
+        except Exception as e:
+            print(f"Error loading {CONTENT_FILE}: {e}")
+
+def save_custom_content():
+    try:
+        data = {
+            lang: {field: LANGUAGES[lang][field] for field in EDITABLE_FIELDS}
+            for lang in ["mm", "en", "zh"]
+        }
+        data["pricing"] = PRICING
+        with open(CONTENT_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving {CONTENT_FILE}: {e}")
+
+load_custom_content()
 
 def get_station_info_text(seat_name, lang_code):
     ln = LANGUAGES.get(lang_code, LANGUAGES["mm"])
@@ -396,6 +443,7 @@ def handle_set_language(call):
     bot.send_message(call.message.chat.id, LANGUAGES[lang_code]["welcome"], reply_markup=markup)
 
 
+# --- 4. GENERAL TEXT MESSAGES HANDLER ---
 @bot.message_handler(content_types=['text'])
 def handle_text_messages(message):
     user_id = message.from_user.id
@@ -443,7 +491,7 @@ def handle_text_messages(message):
     elif text == "⚙️ Admin Panel" and user_id == ADMIN_ID: admin_command(message)
 
 
-
+# --- 5. TIME PICKER & BOOKING STEPS ---
 def get_time_picker_keyboard(h, m, p):
     markup = types.InlineKeyboardMarkup(row_width=3)
     markup.add(
@@ -606,7 +654,7 @@ def handle_hour_selection(call):
     
     hour_int = 1 if hours == "Open" else int(hours)
     total_price = price_per_hour * hour_int
-    deposit_price = int(total_price * 0.30) # 30% Deposit
+    deposit_price = int(total_price * 0.30)
     
     time_range_text = calculate_time_range(user_sessions[user_id]["arrival_time"], hours)
     
@@ -696,8 +744,11 @@ def handle_phone_final(message):
 def handle_incoming_photo(message):
     user_id = message.from_user.id
     if user_id in user_sessions and user_sessions[user_id].get("pay_choice") == "now":
-        user_sessions[user_id]["photo_id"] = message.photo[-1].file_id
-        send_booking_to_admin(user_id)
+        if message.photo and len(message.photo) > 0:
+            user_sessions[user_id]["photo_id"] = message.photo[-1].file_id
+            send_booking_to_admin(user_id)
+        else:
+            bot.send_message(user_id, "❌ ငွေလွှဲဖြတ်ပိုင်း Screenshot ပုံကို ပုံမှန်ဓာတ်ပုံအနေဖြင့် ပို့ပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်။")
 
 
 def send_booking_to_admin(user_id):
@@ -782,13 +833,28 @@ def handle_admin_confirmation(call):
     bot.send_message(ADMIN_ID, msg_text)
 
 
-def admin_command(message):
-    markup = types.InlineKeyboardMarkup()
+
+def get_admin_panel_markup():
+    markup = types.InlineKeyboardMarkup(row_width=1)
     for seat, data in seats_status.items():
         status_text = "🟢 လွတ်" if data["available"] else "🔴 မလွတ်"
         markup.add(types.InlineKeyboardButton(text=f"{seat}: {status_text}", callback_data=f"p_tgl_{seat}"))
-    bot.send_message(ADMIN_ID, "⚙️ Admin Panel - စက်အခြေအနေ ပြောင်းလဲရန် နှိပ်ပါ", reply_markup=markup)
+    
+    markup.add(
+        types.InlineKeyboardButton("💰 စက်ဈေးနှုန်းများ ပြင်ရန် (Station Prices)", callback_data="panel_prices"),
+        types.InlineKeyboardButton("📝 Menu / Game / Promo / အချက်အလက်များ ပြင်ရန်", callback_data="panel_contents"),
+        types.InlineKeyboardButton("🔄 အချက်အလက်အားလုံး မူလအတိုင်း ပြန်ထားရန်", callback_data="panel_reset_all")
+    )
+    return markup
 
+def admin_command(message):
+    bot.clear_step_handler_by_chat_id(chat_id=ADMIN_ID)
+    bot.send_message(
+        ADMIN_ID,
+        "⚙️ <b>Admin Control Panel</b>\nစက်အခြေအနေ ပြောင်းလဲရန် သို့မဟုတ် ဆိုင်အချက်အလက်များ ပြင်ဆင်ရန် ရွေးချယ်ပါ -",
+        parse_mode="HTML",
+        reply_markup=get_admin_panel_markup()
+    )
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('p_tgl_'))
 def handle_panel_toggle(call):
@@ -803,27 +869,201 @@ def handle_panel_toggle(call):
     bot.answer_callback_query(call.id, text=f"{seat_name} Status ပြောင်းလဲပြီးပါပြီ")
     
     try:
-        markup = types.InlineKeyboardMarkup()
-        for seat, data in seats_status.items():
-            status_text = "🟢 လွတ်" if data["available"] else "🔴 မလွတ်"
-            markup.add(types.InlineKeyboardButton(text=f"{seat}: {status_text}", callback_data=f"p_tgl_{seat}"))
-        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=get_admin_panel_markup()
+        )
     except Exception:
         pass
 
+@bot.callback_query_handler(func=lambda call: call.data == 'panel_prices')
+def handle_admin_prices_menu(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    for st_type, price in PRICING.items():
+        markup.add(types.InlineKeyboardButton(f"🕹️ {st_type}: {price:,} ကျပ်/နာရီ", callback_data=f"setprice_{st_type}"))
+    markup.add(types.InlineKeyboardButton("⬅️ Admin Panel သို့ ပြန်သွားရန်", callback_data="panel_back_main"))
+    
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="💰 <b>ပြင်ဆင်လိုသော စက်အမျိုးအစားကို ရွေးချယ်ပါ -</b>",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('setprice_'))
+def handle_set_price_prompt(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    st_type = call.data.replace('setprice_', '', 1)
+    current_price = PRICING.get(st_type, 0)
+    
+    msg = bot.send_message(
+        ADMIN_ID,
+        f"🕹️ <b>{st_type}</b> ၏ လက်ရှိဈေးနှုန်းမှာ <b>{current_price:,} ကျပ်</b> ဖြစ်ပါသည်။\n\n"
+        f"ပြောင်းလဲလိုသော တစ်နာရီဈေးနှုန်းအသစ်ကို ဂဏန်းသီးသန့် ရိုက်ပို့ပေးပါ (ဥပမာ - <code>15000</code>)\n"
+        f"<i>(မပြင်လိုတော့ပါက <code>/cancel</code> ဟု ရိုက်ပို့ပါ)</i>",
+        parse_mode="HTML"
+    )
+    bot.register_next_step_handler(msg, save_new_station_price, st_type)
+
+def save_new_station_price(message, st_type):
+    if message.from_user.id != ADMIN_ID:
+        return
+    if not message.text or message.text.strip().lower() in ["/cancel", "/start"]:
+        bot.send_message(ADMIN_ID, "❎ ဈေးနှုန်းပြင်ဆင်မှုကို ပယ်ဖျက်လိုက်ပါသည်။")
+        return
+        
+    digits = ''.join(filter(str.isdigit, message.text))
+    if not digits:
+        bot.send_message(ADMIN_ID, "❌ ဂဏန်းသီးသန့်သာ ရိုက်ထည့်ပေးပါ။ ပြင်ဆင်မှုကို ပယ်ဖျက်လိုက်ပါသည်။")
+        return
+        
+    PRICING[st_type] = int(digits)
+    save_custom_content()
+    bot.send_message(
+        ADMIN_ID,
+        f"✅ <b>{st_type}</b> ၏ တစ်နာရီဈေးနှုန်းကို <b>{PRICING[st_type]:,} ကျပ်</b> သို့ အောင်မြင်စွာ ပြောင်းလဲပြီးပါပြီ!",
+        parse_mode="HTML"
+    )
 
 
-app = Flask(__name__)
+@bot.callback_query_handler(func=lambda call: call.data == 'panel_contents')
+def handle_admin_contents_menu(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    for field_key, label in FIELD_LABELS.items():
+        markup.add(types.InlineKeyboardButton(f"{label} ပြင်ရန်", callback_data=f"pickfield_{field_key}"))
+    markup.add(types.InlineKeyboardButton("⬅️ Admin Panel သို့ ပြန်သွားရန်", callback_data="panel_back_main"))
+    
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="📝 <b>ပြင်ဆင်လိုသော ကဏ္ဍကို ရွေးချယ်ပါ -</b>",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
 
-@app.route('/')
-def home():
-    return "361° Gaming Lounge Bot is Alive and Running 24/7!"
+@bot.callback_query_handler(func=lambda call: call.data.startswith('pickfield_'))
+def handle_pick_field_lang(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    field_key = call.data.replace('pickfield_', '', 1)
+    label = FIELD_LABELS.get(field_key, field_key)
+    
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton(f"🇲🇲 မြန်မာ ({label})", callback_data=f"editfield_{field_key}_mm"),
+        types.InlineKeyboardButton(f"🇬🇧 English ({label})", callback_data=f"editfield_{field_key}_en"),
+        types.InlineKeyboardButton(f"🇨🇳 中文 ({label})", callback_data=f"editfield_{field_key}_zh"),
+        types.InlineKeyboardButton("⬅️ နောက်သို့ ပြန်သွားရန်", callback_data="panel_contents")
+    )
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"🌐 <b>{label}</b> အတွက် ပြင်ဆင်လိုသော ဘာသာစကားကို ရွေးချယ်ပါ -",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
 
-def run_web():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('editfield_'))
+def handle_edit_field_prompt(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    clean_data = call.data.replace('editfield_', '', 1)
+    last_underscore = clean_data.rfind('_')
+    field_key = clean_data[:last_underscore]
+    lang_key = clean_data[last_underscore+1:]
+    
+    lang_names = {"mm": "မြန်မာ", "en": "English", "zh": "中文"}
+    label = FIELD_LABELS.get(field_key, field_key)
+    current_text = LANGUAGES[lang_key][field_key]
+    
+    bot.send_message(ADMIN_ID, current_text, parse_mode="HTML")
+    prompt_msg = bot.send_message(
+        ADMIN_ID,
+        f"⬆️ အပေါ်တွင် လက်ရှိ <b>{label} ({lang_names[lang_key]})</b> စာသားကို ပို့ပေးထားပါသည်။\n\n"
+        f"၎င်းစာသားကို Copy ကူးပြီး စိတ်ကြိုက်ပြင်ဆင်ကာ ဤနေရာသို့ ပြန်ပို့ပေးပါ။\n"
+        f"<i>(မပြင်လိုတော့ပါက <code>/cancel</code> ဟု ရိုက်ပို့ပါ)</i>",
+        parse_mode="HTML"
+    )
+    bot.register_next_step_handler(prompt_msg, save_edited_field_step, field_key, lang_key)
+
+def save_edited_field_step(message, field_key, lang_key):
+    if message.from_user.id != ADMIN_ID:
+        return
+    if message.text is None:
+        bot.send_message(ADMIN_ID, "❌ စာသားပို့ပေးရန် လိုအပ်ပါသည်။ ပြင်ဆင်မှုကို ပယ်ဖျက်လိုက်ပါသည်။")
+        return
+        
+    text = message.text.strip()
+    if text.lower() == "/cancel" or text == "/start":
+        bot.send_message(ADMIN_ID, "❎ ပြင်ဆင်မှုကို ပယ်ဖျက်လိုက်ပါသည်။")
+        return
+        
+    LANGUAGES[lang_key][field_key] = text
+    save_custom_content()
+    
+    label = FIELD_LABELS.get(field_key, field_key)
+    bot.send_message(
+        ADMIN_ID,
+        f"✅ <b>{label} အသစ်ကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ!</b>\n\nအောက်တွင် ပြင်ဆင်ထားသော ပုံစံအသစ်ကို ကြည့်ရှုနိုင်ပါသည် -",
+        parse_mode="HTML"
+    )
+    try:
+        bot.send_message(ADMIN_ID, text, parse_mode="HTML")
+    except Exception:
+        bot.send_message(ADMIN_ID, text)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'panel_reset_all')
+def handle_admin_reset_all(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    for lang in ["mm", "en", "zh"]:
+        for field in EDITABLE_FIELDS:
+            LANGUAGES[lang][field] = DEFAULT_CONTENT[lang][field]
+    for k, v in DEFAULT_PRICING.items():
+        PRICING[k] = v
+    save_custom_content()
+    bot.send_message(ADMIN_ID, "✅ Menu၊ ဂိမ်းစာရင်း၊ ပရိုမိုးရှင်းနှင့် စက်ဈေးနှုန်း အားလုံးကို မူလအတိုင်း ပြန်လည်သတ်မှတ်ပြီးပါပြီ။")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'panel_back_main')
+def handle_admin_back_main(call):
+    if call.from_user.id != ADMIN_ID:
+        return
+    bot.answer_callback_query(call.id)
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="⚙️ <b>Admin Control Panel</b>\nစက်အခြေအနေ ပြောင်းလဲရန် သို့မဟုတ် ဆိုင်အချက်အလက်များ ပြင်ဆင်ရန် ရွေးချယ်ပါ -",
+        parse_mode="HTML",
+        reply_markup=get_admin_panel_markup()
+    )
+
 
 def keep_alive():
+    if Flask is None:
+        return
+    app = Flask(__name__)
+
+    @app.route('/')
+    def home():
+        return "361° Gaming Lounge Bot is Alive and Running 24/7!"
+
+    def run_web():
+        port = int(os.environ.get("PORT", 8080))
+        app.run(host="0.0.0.0", port=port)
+
     t = Thread(target=run_web, daemon=True)
     t.start()
 
